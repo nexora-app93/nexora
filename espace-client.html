@@ -16,7 +16,7 @@ body{background:#f6f7f3;color:#1a2c25;font-family:Inter,ui-sans-serif,system-ui,
 .stat,.card{background:#fff;border:1px solid #e0e7e0;border-radius:14px;box-shadow:0 8px 30px #1c35270a}.stat .value{color:#1a2c25}.card h2{color:#1a2c25}.card p{color:#68786e}
 input,textarea,select{background:#fafbf9;color:#1a2c25;border-color:#d6e0d7;border-radius:9px}input:focus,textarea:focus,select:focus{border-color:#2c695c;box-shadow:0 0 0 3px #2c695c15}label{color:#334b3d}
 button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}button:hover,.btn:hover{background:#163b31;filter:none}.ghost,.review-actions .ghost{background:#eef2ed;color:#2b5445;border:1px solid #dbe4db}.ghost:hover,.review-actions .ghost:hover{background:#e4ece4}.review{border-color:#e3e9e2}.stars{color:#bd8b3c}.review-actions .danger{background:#f9eeee;color:#9b4040}.review-actions .danger:hover{background:#f3dede}.reply{background:#f0f6f1;border-color:#2c695c;color:#385747}.notice{color:#7a897e}#message,#reviewMessage{color:#28644d}footer{color:#849187}
-@media(max-width:600px){.hero h1{font-size:32px}}</style>
+@media(max-width:600px){.hero h1{font-size:32px}}.review-tools{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}.review-tools input{flex:1;min-width:180px;margin:0}.review-tools button{white-space:nowrap}.draft-editor{margin-top:14px;padding:16px;background:#f5f8f4;border:1px solid #e0e9df;border-radius:10px}.review-date{color:#819087;font-size:12px;margin:8px 0}.review-actions{margin-top:14px}@media(max-width:600px){.review-tools button{width:100%}}</style>
 </head>
 <body><div class="shell">
 <header class="topbar"><a class="brand" href="index.html">NEXORA<span>.</span></a><nav class="toplinks"><a href="index.html">Accueil</a><a href="app.html">Démo</a><a href="#companyForm">Mon entreprise</a><button class="ghost" id="logout" type="button" hidden>Déconnexion</button></nav></header>
@@ -28,7 +28,7 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
 <div class="columns"><div class="stack">
 <form id="companyForm" class="card"><h2>Mon entreprise</h2><p class="muted">Ces informations restent liées à ton compte.</p><label for="nom">Nom de l'entreprise</label><input id="nom" required maxlength="150" placeholder="Ex. Salon Nova"><label for="telephone">Téléphone</label><input id="telephone" type="tel" maxlength="40" placeholder="06…"><label for="adresse">Adresse</label><input id="adresse" maxlength="300" placeholder="Ville, rue…"><button id="save" type="submit">Enregistrer l'entreprise</button><p id="message" role="status"></p></form>
 <form id="reviewForm" class="card"><h2>Ajouter un avis</h2><p class="muted">Saisie manuelle d'un avis reçu. Aucun avis Google n'est importé automatiquement.</p><label for="client">Nom du client</label><input id="client" required maxlength="120" placeholder="Ex. Camille D."><label for="note">Note reçue</label><select id="note"><option value="5">★★★★★ · 5 étoiles</option><option value="4">★★★★☆ · 4 étoiles</option><option value="3">★★★☆☆ · 3 étoiles</option><option value="2">★★☆☆☆ · 2 étoiles</option><option value="1">★☆☆☆☆ · 1 étoile</option></select><label for="commentaire">Commentaire</label><textarea id="commentaire" required maxlength="2000" rows="4" placeholder="L'avis du client…"></textarea><label for="reponse">Réponse (facultatif)</label><textarea id="reponse" maxlength="2000" rows="3" placeholder="Tu peux aussi générer une proposition après l'ajout."></textarea><button type="submit" id="addReview">+ Enregistrer cet avis</button><p id="reviewMessage" role="status"></p></form>
-</div><section class="card" id="reviewsSection"><div class="toolbar"><div><h2>Avis clients</h2><p class="muted">Tes retours, tes réponses, ton suivi.</p></div><select id="reviewFilter" aria-label="Filtrer les avis"><option value="all">Tous les avis</option><option value="pending">Sans réponse</option><option value="answered">Avec réponse</option></select></div><div id="reviewsList"></div></section></div>
+</div><section class="card" id="reviewsSection"><div class="toolbar"><div><h2>Avis clients</h2><p class="muted">Tes retours, tes réponses, ton suivi.</p></div><select id="reviewFilter" aria-label="Filtrer les avis"><option value="all">Tous les avis</option><option value="pending">Sans réponse</option><option value="answered">Avec réponse</option></select></div><div class="review-tools"><input id="reviewSearch" type="search" placeholder="Rechercher un avis…" aria-label="Rechercher dans les avis"><button id="exportReviews" type="button" class="ghost">Exporter CSV</button></div><p class="notice" id="resultsCount"></p><div id="reviewsList"></div></section></div>
 </div><footer>© 2026 NEXORA · AvisBoost · Les réponses proposées sont des brouillons à vérifier avant publication.</footer></div>
 <script type="module">
     import { createClient } from
@@ -64,6 +64,18 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
     const reviewsList = document.querySelector("#reviewsList");
     const addReview = document.querySelector("#addReview");
     const filter = document.querySelector("#reviewFilter");
+    const search = document.querySelector("#reviewSearch");
+    search.addEventListener("input",renderReviews);
+    document.querySelector("#exportReviews").addEventListener("click",()=>{
+      if(!cachedReviews.length){reviewMessage.textContent="Aucun avis à exporter.";return;}
+      const rows=[["Date","Client","Note","Commentaire","Réponse"],...cachedReviews.map(r=>[r.created_at,r.client,r.note,r.commentaire,r.reponse||""])];
+      const esc=value=>{const s=String(value??"").replace(/^[=+@\-\t\r]/,"'");return '"'+s.replace(/"/g,'""')+'"';};
+      const csv="\uFEFF"+rows.map(row=>row.map(esc).join(";")).join("\r\n");
+      const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+      const a=document.createElement("a");a.href=url;a.download="nexora-avis-"+new Date().toISOString().slice(0,10)+".csv";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      reviewMessage.textContent="Export CSV prêt.";
+    });
+
     function proposeReply(review, tone="warm") {
       const t = review.commentaire.toLowerCase();
       const negative = review.note <= 2 || /déçu|mauvais|retard|attente|problème|décevant|désagréable|cher|nul|horrible/.test(t);
@@ -86,7 +98,7 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
       const wrap=element("article","review");
       const head=element("div","review-head");
       head.append(element("strong","",review.client),element("span","stars","★".repeat(review.note)+"☆".repeat(5-review.note)));
-      wrap.append(head,element("p","",review.commentaire));
+      wrap.append(head,element("div","review-date",new Date(review.created_at).toLocaleDateString("fr-FR")),element("p","",review.commentaire));
       if(review.reponse)wrap.append(element("div","reply","↳ "+review.reponse));
       const actions=element("div","review-actions");
       const draft=element("button","",review.reponse?"Nouvelle proposition":"Proposer une réponse");
@@ -108,7 +120,9 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
     }
     function renderReviews(){
       reviewsList.replaceChildren();
-      const rows=cachedReviews.filter(r=>filter.value==="all"||(filter.value==="pending"?!r.reponse:!!r.reponse));
+      const query=search.value.trim().toLocaleLowerCase("fr");
+      const rows=cachedReviews.filter(r=>(filter.value==="all"||(filter.value==="pending"?!r.reponse:!!r.reponse))&&(!query||(r.client+" "+r.commentaire+" "+(r.reponse||"")).toLocaleLowerCase("fr").includes(query)));
+      document.querySelector("#resultsCount").textContent=rows.length+" avis affichés sur "+cachedReviews.length+" chargés";
       if(!rows.length){reviewsList.append(element("div","empty",cachedReviews.length?"Aucun avis pour ce filtre.":"Aucun avis pour le moment. Ajoute ton premier avis !"));return;}
       rows.forEach(r=>reviewsList.append(reviewRow(r)));
     }
