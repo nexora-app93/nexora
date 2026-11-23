@@ -1,0 +1,213 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1">
+  <title>NEXORA | Espace client</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #0c0b17;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 30px 16px;
+    }
+    main { max-width: 650px; margin: auto; }
+    h1 { color: #b59aff; }
+    .card {
+      background: #19162b;
+      border: 1px solid #393052;
+      padding: 25px;
+      border-radius: 16px;
+      margin-top: 20px;
+    }
+    input, button {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      margin: 12px 0;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    input {
+      background: #100e1e;
+      border: 1px solid #4b4263;
+      color: white;
+    }
+    button {
+      background: #8555ed;
+      border: 0;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; }
+    label { display: block; margin-top: 14px; }
+    a { color: #b59aff; }
+    [hidden] { display: none !important; }
+    #message { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>NEXORA</h1>
+    <p>AvisBoost — Espace client</p>
+
+    <section id="loading" class="card">
+      Vérification de la connexion...
+    </section>
+
+    <section id="guest" class="card" hidden>
+      <h2>Connexion nécessaire</h2>
+      <p>Connecte-toi pour accéder à ton entreprise.</p>
+      <a href="connexion.html">Se connecter</a>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="card">
+        <h2>Bienvenue !</h2>
+        <p id="email"></p>
+        <button id="logout">Se déconnecter</button>
+      </div>
+
+      <form id="companyForm" class="card">
+        <h2>Mon entreprise</h2>
+
+        <label for="nom">Nom de l'entreprise</label>
+        <input id="nom" required maxlength="150">
+
+        <label for="telephone">Téléphone</label>
+        <input id="telephone" type="tel" maxlength="40">
+
+        <label for="adresse">Adresse</label>
+        <input id="adresse" maxlength="300">
+
+        <button id="save" type="submit">
+          Enregistrer mon entreprise
+        </button>
+      </form>
+    </section>
+
+    <p id="message" role="status"></p>
+    <a href="index.html">Retour à l'accueil</a>
+  </main>
+
+  <script type="module">
+    import { createClient } from
+      "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    // Reprends les mêmes valeurs que dans connexion.html
+    const PROJECT_URL = "TON_PROJECT_URL";
+    const PUBLISHABLE_KEY = "TA_PUBLISHABLE_KEY";
+
+    const message = document.querySelector("#message");
+    const dashboard = document.querySelector("#dashboard");
+    const guest = document.querySelector("#guest");
+    const loading = document.querySelector("#loading");
+    const form = document.querySelector("#companyForm");
+    const save = document.querySelector("#save");
+
+    if (PROJECT_URL === "https://oywvbrwbuqzdjrmxukho.supabase.co" ||
+        PUBLISHABLE_KEY === "sb_publishable_ktzBeglUCAKdZhb-xX2reg_iDKhmFTn") {
+      loading.textContent =
+        "Configuration Supabase manquante.";
+      throw new Error("Configuration manquante");
+    }
+
+    const supabase = createClient(
+      PROJECT_URL,
+      PUBLISHABLE_KEY
+    );
+
+    let currentUser = null;
+
+    function showState(user) {
+      currentUser = user;
+      loading.hidden = true;
+      guest.hidden = Boolean(user);
+      dashboard.hidden = !user;
+      document.querySelector("#email").textContent =
+        user?.email || "";
+    }
+
+    async function loadCompany() {
+      const { data, error } = await supabase
+        .from("entreprises")
+        .select("nom, telephone, adresse")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        message.textContent = error.message;
+        return;
+      }
+
+      document.querySelector("#nom").value =
+        data?.nom || "";
+      document.querySelector("#telephone").value =
+        data?.telephone || "";
+      document.querySelector("#adresse").value =
+        data?.adresse || "";
+    }
+
+    async function initialize() {
+      const { data, error } =
+        await supabase.auth.getUser();
+
+      if (error && error.name !==
+          "AuthSessionMissingError") {
+        message.textContent = error.message;
+      }
+
+      showState(data?.user || null);
+
+      if (currentUser) {
+        await loadCompany();
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!currentUser) return;
+
+      save.disabled = true;
+      message.textContent = "Enregistrement...";
+
+      const company = {
+        user_id: currentUser.id,
+        nom: document.querySelector("#nom")
+          .value.trim(),
+        telephone: document.querySelector("#telephone")
+          .value.trim() || null,
+        adresse: document.querySelector("#adresse")
+          .value.trim() || null
+      };
+
+      const { error } = await supabase
+        .from("entreprises")
+        .upsert(company, { onConflict: "user_id" });
+
+      message.textContent = error
+        ? "Erreur : " + error.message
+        : "Entreprise enregistrée avec succès !";
+
+      save.disabled = false;
+    });
+
+    document.querySelector("#logout")
+      .addEventListener("click", async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          message.textContent = error.message;
+          return;
+        }
+        window.location.href = "connexion.html";
+      });
+
+    await initialize();
+  </script>
+</body>
+</html>
