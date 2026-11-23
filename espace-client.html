@@ -124,7 +124,15 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
         saveButton.addEventListener("click",()=>{const value=textarea.value.trim();if(!value){reviewMessage.textContent="Écris une réponse avant d'enregistrer.";return;}saveReply(review,value,saveButton);});
         const copy=element("button","ghost","Copier");copy.type="button";
         copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(textarea.value);copy.textContent="Copié ✓";}catch{textarea.select();reviewMessage.textContent="Sélectionne et copie la réponse."; }});
-        editor.append(label,textarea,saveButton,document.createTextNode(" "),copy);wrap.append(editor);
+        const ai=element("button","ghost","Générer avec l'IA");ai.type="button";
+        ai.addEventListener("click",async()=>{
+          ai.disabled=true;ai.textContent="Génération…";
+          const {data,error}=await supabase.functions.invoke("proposer-reponse",{body:{note:review.note,commentaire:review.commentaire,client:review.client,entreprise:document.querySelector("#nom").value.trim()}});
+          ai.disabled=false;ai.textContent="Générer avec l'IA";
+          if(error||!data?.suggestion){reviewMessage.textContent=data?.error||"IA non disponible pour le moment : la clé API doit être configurée. La proposition locale reste utilisable.";return;}
+          textarea.value=data.suggestion;reviewMessage.textContent="Proposition IA prête : relis-la avant de l'enregistrer.";
+        });
+        editor.append(label,textarea,saveButton,document.createTextNode(" "),copy,document.createTextNode(" "),ai);wrap.append(editor);
       });
       const edit=element("button","ghost","Modifier");edit.type="button";
       edit.addEventListener("click",()=>{
