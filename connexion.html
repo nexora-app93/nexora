@@ -60,6 +60,7 @@
     const password = document.querySelector("#password");
     const login = document.querySelector("#login");
     const signup = document.querySelector("#signup");
+    const logout=document.querySelector("#logout");
     let recoveryMode=false;
 
     if (PROJECT_URL === "TON_PROJECT_URL" ||
@@ -84,6 +85,7 @@
     function setBusy(busy) {
       login.disabled = busy;
       signup.disabled = busy;
+      document.querySelector("#forgot").disabled=busy;
     }
 
     async function signIn(event) {
@@ -123,7 +125,7 @@
 
       message.textContent = error
         ? error.message
-        : "Vérifie tes e-mails pour confirmer ton compte.";
+        : "Compte créé. Si la confirmation est activée, vérifie tes e-mails avant de te connecter.";
       setBusy(false);
     }
 
@@ -132,6 +134,7 @@
       message.textContent = error
         ? error.message
         : "Déconnexion réussie.";
+      if(!error) showUser(null);
     }
 
 
@@ -144,9 +147,11 @@
     });
     document.querySelector("#resetForm").addEventListener("submit",async event=>{
       event.preventDefault();
+      const submit=event.submitter;submit.disabled=true;
       const {error}=await supabase.auth.updateUser({password:document.querySelector("#newPassword").value});
+      submit.disabled=false;
       message.textContent=error?error.message:"Mot de passe mis à jour.";
-      if(!error){recoveryMode=false;const {data}=await supabase.auth.getUser();showUser(data?.user||null);}
+      if(!error){recoveryMode=false;document.querySelector("#newPassword").value="";const {data}=await supabase.auth.getUser();showUser(data?.user||null);}
     });
     document.querySelector("#authForm")
       .addEventListener("submit", signIn);
@@ -165,7 +170,7 @@
     if (error && error.name !== "AuthSessionMissingError") {
       message.textContent = error.message;
     }
-    if(window.location.hash.includes("type=recovery"))recoveryMode=true;
+    if(new URLSearchParams(window.location.hash.slice(1)).get("type")==="recovery" && data?.user)recoveryMode=true;
     showUser(data?.user || null);
   </script>
 </body>
