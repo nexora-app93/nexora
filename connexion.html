@@ -5,58 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NEXORA | Connexion</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: #0c0b17;
-      color: white;
-      font-family: Arial, sans-serif;
-      display: grid;
-      place-items: center;
-      padding: 20px;
-    }
-    .card {
-      width: 100%;
-      max-width: 420px;
-      padding: 32px;
-      background: #19162b;
-      border: 1px solid #393052;
-      border-radius: 18px;
-    }
-    h1 { color: #b59aff; margin-bottom: 4px; }
-    p { color: #bbb5ce; line-height: 1.5; }
-    input, button {
-      width: 100%;
-      padding: 14px;
-      margin-top: 12px;
-      border-radius: 9px;
-      font-size: 15px;
-    }
-    input {
-      background: #100e1e;
-      color: white;
-      border: 1px solid #4b4263;
-    }
-    button {
-      background: #8555ed;
-      color: white;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    button:disabled { opacity: .5; }
-    .secondary { background: #34304a; }
-    #message { min-height: 24px; }
-    a { color: #b59aff; }
-    [hidden] { display: none !important; }
-  </style>
+  <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 75% 5%,#30235d,transparent 45%),#090d19;color:#f7f9ff;font-family:Inter,system-ui,Arial;display:grid;place-items:center;padding:22px}.card{width:100%;max-width:450px;padding:35px;background:linear-gradient(150deg,#1a2138,#11172a);border:1px solid #36405d;border-radius:23px;box-shadow:0 30px 80px #0005}h1{font-size:34px;letter-spacing:-1px;margin:0;color:#fff}h1 span{color:#71e9d4}p{color:#aebad3;line-height:1.65}input,button{width:100%;padding:14px 15px;margin-top:13px;border-radius:12px;font-size:15px}input{background:#0d1425;color:#fff;border:1px solid #3c4762;outline:none}input:focus{border-color:#a78bfa;box-shadow:0 0 0 3px #a78bfa22}button{background:linear-gradient(110deg,#9062f5,#5a6af5);color:#fff;border:0;cursor:pointer;font-weight:800}button:disabled{opacity:.5}.secondary{background:#28314b;border:1px solid #45516d}#message{min-height:24px;color:#8ff4df;font-size:14px;overflow-wrap:anywhere}a{color:#a996ff;text-decoration:none}.back{display:inline-block;margin-top:22px;font-size:14px}[hidden]{display:none!important}</style>
 </head>
 <body>
   <main class="card">
-    <h1>NEXORA</h1>
-    <p>AvisBoost - Espace client</p>
+    <h1>NEXORA<span>✦</span></h1>
+    <p>AvisBoost · Espace client</p>
 
     <section id="auth">
       <form id="authForm">
@@ -80,7 +34,7 @@
     <section id="account" hidden>
       <h2>Bienvenue !</h2>
       <p id="userEmail"></p>
-      <p>Ton compte est connecté.</p>
+      <p>Ton compte est connecté.</p><a href="espace-client.html">Ouvrir mon tableau de bord →</a>
       <button id="logout">Se déconnecter</button>
     </section>
 
@@ -143,6 +97,7 @@
         ? error.message
         : "Connexion réussie !";
       setBusy(false);
+      if (!error) window.location.href = "espace-client.html";
     }
 
     async function signUp() {
