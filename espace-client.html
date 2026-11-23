@@ -49,6 +49,8 @@
     a { color: #b59aff; }
     [hidden] { display: none !important; }
     #message { white-space: pre-wrap; }
+    textarea, select { width:100%; padding:13px; margin:12px 0; border-radius:8px; background:#100e1e; border:1px solid #4b4263; color:white; font:inherit; }
+    .muted { color:#bcb6d3; } .review { border-top:1px solid #393052; padding:16px 0; } .review p { overflow-wrap:anywhere; } .review button { max-width:170px; background:#463b65; }
   </style>
 </head>
 <body>
@@ -89,6 +91,19 @@
           Enregistrer mon entreprise
         </button>
       </form>
+      <section class="card" id="reviewsSection">
+        <h2>Avis clients</h2>
+        <p class="muted">Ajoute des avis manuellement. Ils seront enregistrés dans ton compte une fois la table Supabase activée.</p>
+        <form id="reviewForm">
+          <label for="client">Nom du client</label><input id="client" required maxlength="120">
+          <label for="note">Note</label><select id="note"><option value="5">5 étoiles</option><option value="4">4 étoiles</option><option value="3">3 étoiles</option><option value="2">2 étoiles</option><option value="1">1 étoile</option></select>
+          <label for="commentaire">Commentaire</label><textarea id="commentaire" required maxlength="2000" rows="4"></textarea>
+          <label for="reponse">Réponse de l’entreprise (facultatif)</label><textarea id="reponse" maxlength="2000" rows="3"></textarea>
+          <button type="submit" id="addReview">Enregistrer cet avis</button>
+        </form>
+        <p id="reviewMessage" role="status"></p>
+        <div id="reviewsList"></div>
+      </section>
     </section>
 
     <p id="message" role="status"></p>
@@ -123,6 +138,36 @@
     );
 
     let currentUser = null;
+    const reviewForm = document.querySelector("#reviewForm");
+    const reviewMessage = document.querySelector("#reviewMessage");
+    const reviewsList = document.querySelector("#reviewsList");
+    const addReview = document.querySelector("#addReview");
+    const safeText = (value) => document.createTextNode(value ?? "");
+    function reviewRow(review) {
+      const div = document.createElement("div"); div.className = "review";
+      const title = document.createElement("strong"); title.append(safeText(review.client + " — " + "★".repeat(review.note))); div.append(title);
+      const p = document.createElement("p"); p.append(safeText(review.commentaire)); div.append(p);
+      if (review.reponse) { const reply = document.createElement("p"); reply.className="muted"; reply.append(safeText("Réponse : " + review.reponse)); div.append(reply); }
+      const del = document.createElement("button"); del.type="button"; del.textContent="Supprimer";
+      del.addEventListener("click", async () => { if (!confirm("Supprimer cet avis ?")) return; del.disabled=true; const {error}=await supabase.from("avis").delete().eq("id",review.id).eq("user_id",currentUser.id); if(error){reviewMessage.textContent=error.message;del.disabled=false;}else await loadReviews(); });
+      div.append(del); return div;
+    }
+    async function loadReviews() {
+      reviewsList.replaceChildren();
+      if(!currentUser) return;
+      const {data,error}=await supabase.from("avis").select("id,client,note,commentaire,reponse,created_at").eq("user_id",currentUser.id).order("created_at",{ascending:false}).limit(100);
+      if(error){reviewMessage.textContent="La gestion des avis nécessite encore la table Supabase avis. " + error.message; addReview.disabled=true;return;}
+      addReview.disabled=false; reviewMessage.textContent="";
+      if(!data.length){const p=document.createElement("p");p.className="muted";p.textContent="Aucun avis enregistré pour le moment.";reviewsList.append(p);}
+      for(const review of data) reviewsList.append(reviewRow(review));
+    }
+    reviewForm.addEventListener("submit",async (event)=>{
+      event.preventDefault(); if(!currentUser) return; addReview.disabled=true; reviewMessage.textContent="Enregistrement...";
+      const payload={user_id:currentUser.id,client:document.querySelector("#client").value.trim(),note:Number(document.querySelector("#note").value),commentaire:document.querySelector("#commentaire").value.trim(),reponse:document.querySelector("#reponse").value.trim()||null};
+      const {error}=await supabase.from("avis").insert(payload);
+      if(error){reviewMessage.textContent="Erreur : "+error.message;addReview.disabled=false;return;}
+      reviewForm.reset();await loadReviews();reviewMessage.textContent="Avis enregistré !";
+    });
 
     function showState(user) {
       currentUser = user;
@@ -166,6 +211,7 @@
 
       if (currentUser) {
         await loadCompany();
+        await loadReviews();
       }
     }
 
