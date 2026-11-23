@@ -114,15 +114,39 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
         copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(textarea.value);copy.textContent="Copié ✓";}catch{textarea.select();reviewMessage.textContent="Sélectionne et copie la réponse."; }});
         editor.append(label,textarea,saveButton,document.createTextNode(" "),copy);wrap.append(editor);
       });
+      const edit=element("button","ghost","Modifier");edit.type="button";
+      edit.addEventListener("click",()=>{
+        const previous=wrap.querySelector(".review-editor");if(previous){previous.remove();return;}
+        const editor=element("div","draft-editor review-editor");
+        const nameLabel=element("label","","Nom du client");
+        const nameInput=element("input");nameInput.value=review.client;nameInput.maxLength=120;nameInput.required=true;
+        const ratingLabel=element("label","","Note");
+        const ratingInput=element("select");
+        for(let n=5;n>=1;n--){const option=element("option","",n+" / 5");option.value=String(n);option.selected=n===review.note;ratingInput.append(option);}
+        const commentLabel=element("label","","Commentaire");
+        const commentInput=element("textarea");commentInput.value=review.commentaire;commentInput.rows=4;commentInput.maxLength=2000;
+        const saveEdit=element("button","","Enregistrer les modifications");saveEdit.type="button";
+        saveEdit.addEventListener("click",async()=>{
+          const client=nameInput.value.trim(),commentaire=commentInput.value.trim();
+          if(!client||!commentaire){reviewMessage.textContent="Le client et le commentaire sont obligatoires.";return;}
+          saveEdit.disabled=true;reviewMessage.textContent="Modification en cours…";
+          const {data,error}=await supabase.from("avis").update({client,note:Number(ratingInput.value),commentaire}).eq("id",review.id).eq("user_id",currentUser.id).select("id");
+          if(error||!data?.length){reviewMessage.textContent="Modification impossible : "+(error?.message||"avis introuvable");saveEdit.disabled=false;return;}
+          await loadReviews();reviewMessage.textContent="Avis modifié avec succès.";
+        });
+        const cancel=element("button","ghost","Annuler");cancel.type="button";cancel.addEventListener("click",()=>editor.remove());
+        editor.append(nameLabel,nameInput,ratingLabel,ratingInput,commentLabel,commentInput,saveEdit,document.createTextNode(" "),cancel);
+        wrap.append(editor);
+      });
       const del=element("button","danger","Supprimer");del.type="button";
       del.addEventListener("click",async()=>{if(!confirm("Supprimer définitivement cet avis ?"))return;del.disabled=true;const {error}=await supabase.from("avis").delete().eq("id",review.id).eq("user_id",currentUser.id);if(error){reviewMessage.textContent=error.message;del.disabled=false;}else await loadReviews();});
-      actions.append(draft,del);wrap.append(actions);return wrap;
+      actions.append(draft,edit,del);wrap.append(actions);return wrap;
     }
     function renderReviews(){
       reviewsList.replaceChildren();
       const query=search.value.trim().toLocaleLowerCase("fr");
       const rows=cachedReviews.filter(r=>(filter.value==="all"||(filter.value==="pending"?!r.reponse:!!r.reponse))&&(!query||(r.client+" "+r.commentaire+" "+(r.reponse||"")).toLocaleLowerCase("fr").includes(query)));
-      document.querySelector("#resultsCount").textContent=rows.length+" avis affichés sur "+cachedReviews.length+" chargés";
+      document.querySelector("#resultsCount").textContent=rows.length+" avis affiché"+(rows.length>1?"s":"")+" sur "+cachedReviews.length+" enregistré"+(cachedReviews.length>1?"s":"");
       if(!rows.length){reviewsList.append(element("div","empty",cachedReviews.length?"Aucun avis pour ce filtre.":"Aucun avis pour le moment. Ajoute ton premier avis !"));return;}
       rows.forEach(r=>reviewsList.append(reviewRow(r)));
     }
