@@ -1,0 +1,197 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXORA | Connexion</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #0c0b17;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      padding: 32px;
+      background: #19162b;
+      border: 1px solid #393052;
+      border-radius: 18px;
+    }
+    h1 { color: #b59aff; margin-bottom: 4px; }
+    p { color: #bbb5ce; line-height: 1.5; }
+    input, button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border-radius: 9px;
+      font-size: 15px;
+    }
+    input {
+      background: #100e1e;
+      color: white;
+      border: 1px solid #4b4263;
+    }
+    button {
+      background: #8555ed;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:disabled { opacity: .5; }
+    .secondary { background: #34304a; }
+    #message { min-height: 24px; }
+    a { color: #b59aff; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>NEXORA</h1>
+    <p>AvisBoost - Espace client</p>
+
+    <section id="auth">
+      <form id="authForm">
+        <input id="email" type="email"
+          placeholder="Adresse e-mail"
+          autocomplete="email" required>
+        <input id="password" type="password"
+          placeholder="Mot de passe"
+          autocomplete="current-password"
+          minlength="8" required>
+        <button id="login" type="submit">
+          Se connecter
+        </button>
+        <button id="signup" type="button"
+          class="secondary">
+          Créer mon compte
+        </button>
+      </form>
+    </section>
+
+    <section id="account" hidden>
+      <h2>Bienvenue !</h2>
+      <p id="userEmail"></p>
+      <p>Ton compte est connecté.</p>
+      <button id="logout">Se déconnecter</button>
+    </section>
+
+    <p id="message" role="status"></p>
+    <a href="index.html">Retour à l'accueil</a>
+  </main>
+
+  <script type="module">
+    import { createClient } from
+      "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    // Remplace uniquement ces deux valeurs.
+    const PROJECT_URL = "https://oywvbrwbuqzdjrmxukho.supabase.co/rest/v1/";
+    const PUBLISHABLE_KEY = "sb_publishable_ktzBeglUCAKdZhb-xX2reg_iDKhmFTn";
+
+    const message = document.querySelector("#message");
+    const auth = document.querySelector("#auth");
+    const account = document.querySelector("#account");
+    const userEmail = document.querySelector("#userEmail");
+    const email = document.querySelector("#email");
+    const password = document.querySelector("#password");
+    const login = document.querySelector("#login");
+    const signup = document.querySelector("#signup");
+
+    if (PROJECT_URL === "TON_PROJECT_URL" ||
+        PUBLISHABLE_KEY === "TA_PUBLISHABLE_KEY") {
+      message.textContent =
+        "Configure d'abord Supabase dans le code.";
+      throw new Error("Configuration Supabase manquante");
+    }
+
+    const supabase = createClient(
+      PROJECT_URL,
+      PUBLISHABLE_KEY
+    );
+
+    function showUser(user) {
+      auth.hidden = Boolean(user);
+      account.hidden = !user;
+      userEmail.textContent = user?.email || "";
+    }
+
+    function setBusy(busy) {
+      login.disabled = busy;
+      signup.disabled = busy;
+    }
+
+    async function signIn(event) {
+      event.preventDefault();
+      setBusy(true);
+      message.textContent = "Connexion en cours...";
+
+      const { error } =
+        await supabase.auth.signInWithPassword({
+          email: email.value.trim(),
+          password: password.value
+        });
+
+      message.textContent = error
+        ? error.message
+        : "Connexion réussie !";
+      setBusy(false);
+    }
+
+    async function signUp() {
+      if (!document.querySelector("#authForm")
+        .reportValidity()) return;
+
+      setBusy(true);
+      message.textContent = "Création du compte...";
+
+      const { error } = await supabase.auth.signUp({
+        email: email.value.trim(),
+        password: password.value,
+        options: {
+          emailRedirectTo:
+            window.location.origin +
+            window.location.pathname
+        }
+      });
+
+      message.textContent = error
+        ? error.message
+        : "Vérifie tes e-mails pour confirmer ton compte.";
+      setBusy(false);
+    }
+
+    async function signOut() {
+      const { error } = await supabase.auth.signOut();
+      message.textContent = error
+        ? error.message
+        : "Déconnexion réussie.";
+    }
+
+    document.querySelector("#authForm")
+      .addEventListener("submit", signIn);
+    signup.addEventListener("click", signUp);
+    document.querySelector("#logout")
+      .addEventListener("click", signOut);
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      showUser(session?.user || null);
+    });
+
+    const { data, error } =
+      await supabase.auth.getUser();
+
+    if (error && error.name !== "AuthSessionMissingError") {
+      message.textContent = error.message;
+    }
+    showUser(data?.user || null);
+  </script>
+</body>
+</html>
