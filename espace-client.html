@@ -19,7 +19,7 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
 @media(max-width:600px){.hero h1{font-size:32px}}.review-tools{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}.review-tools input{flex:1;min-width:180px;margin:0}.review-tools button{white-space:nowrap}.draft-editor{margin-top:14px;padding:16px;background:#f5f8f4;border:1px solid #e0e9df;border-radius:10px}.review-date{color:#819087;font-size:12px;margin:8px 0}.review-actions{margin-top:14px}@media(max-width:600px){.review-tools button{width:100%}}</style>
 </head>
 <body><div class="shell">
-<header class="topbar"><a class="brand" href="index.html">NEXORA<span>.</span></a><nav class="toplinks"><a href="index.html">Accueil</a><a href="app.html">Démo</a><a href="#companyForm">Mon entreprise</a><button class="ghost" id="logout" type="button" hidden>Déconnexion</button></nav></header>
+<header class="topbar"><a class="brand" href="index.html">NEXORA<span>.</span></a><nav class="toplinks"><a href="index.html">Accueil</a><a href="app.html">Démo</a><a href="#companyForm">Mon entreprise</a><a href="#accountSettings">Mon compte</a><button class="ghost" id="logout" type="button" hidden>Déconnexion</button></nav></header>
 <section id="loading" class="card" style="margin-top:28px" role="status">Connexion sécurisée en cours…</section>
 <section id="guest" class="card" style="margin-top:28px" hidden><h2>Connecte-toi pour accéder à ton espace</h2><p class="muted">Retrouve ton entreprise, tes avis et tes réponses au même endroit.</p><a class="btn" href="connexion.html">Se connecter</a></section>
 <div id="dashboard" hidden>
@@ -29,7 +29,7 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
 <form id="companyForm" class="card"><h2>Mon entreprise</h2><p class="muted">Ces informations restent liées à ton compte.</p><label for="nom">Nom de l'entreprise</label><input id="nom" required maxlength="150" placeholder="Ex. Salon Nova"><label for="telephone">Téléphone</label><input id="telephone" type="tel" maxlength="40" placeholder="06…"><label for="adresse">Adresse</label><input id="adresse" maxlength="300" placeholder="Ville, rue…"><button id="save" type="submit">Enregistrer l'entreprise</button><p id="message" role="status"></p></form>
 <form id="reviewForm" class="card"><h2>Ajouter un avis</h2><p class="muted">Saisie manuelle d'un avis reçu. Aucun avis Google n'est importé automatiquement.</p><label for="client">Nom du client</label><input id="client" required maxlength="120" placeholder="Ex. Camille D."><label for="note">Note reçue</label><select id="note"><option value="5">★★★★★ · 5 étoiles</option><option value="4">★★★★☆ · 4 étoiles</option><option value="3">★★★☆☆ · 3 étoiles</option><option value="2">★★☆☆☆ · 2 étoiles</option><option value="1">★☆☆☆☆ · 1 étoile</option></select><label for="commentaire">Commentaire</label><textarea id="commentaire" required maxlength="2000" rows="4" placeholder="L'avis du client…"></textarea><label for="reponse">Réponse (facultatif)</label><textarea id="reponse" maxlength="2000" rows="3" placeholder="Tu peux aussi générer une proposition après l'ajout."></textarea><button type="submit" id="addReview">+ Enregistrer cet avis</button><p id="reviewMessage" role="status"></p></form>
 </div><section class="card" id="reviewsSection"><div class="toolbar"><div><h2>Avis clients</h2><p class="muted">Tes retours, tes réponses, ton suivi.</p></div><select id="reviewFilter" aria-label="Filtrer les avis"><option value="all">Tous les avis</option><option value="pending">Sans réponse</option><option value="answered">Avec réponse</option></select></div><div class="review-tools"><input id="reviewSearch" type="search" placeholder="Rechercher un avis…" aria-label="Rechercher dans les avis"><button id="exportReviews" type="button" class="ghost">Exporter CSV</button></div><p class="notice" id="resultsCount"></p><div id="reviewsList"></div></section></div>
-</div><footer>© 2026 NEXORA · AvisBoost · Les réponses proposées sont des brouillons à vérifier avant publication.</footer></div>
+<section id="accountSettings" class="card" style="margin-top:22px"><h2>Mon compte</h2><p class="muted">Mettez à jour votre mot de passe en toute sécurité.</p><form id="passwordForm"><label for="accountPassword">Nouveau mot de passe</label><input id="accountPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required placeholder="10 caractères minimum"><button id="changePassword" type="submit">Modifier mon mot de passe</button><p id="passwordMessage" role="status"></p></form></section></div><footer>© 2026 NEXORA · AvisBoost · Les réponses proposées sont des brouillons à vérifier avant publication.</footer></div>
 <script type="module">
     import { createClient } from
       "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
@@ -59,6 +59,18 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
 
     let currentUser = null;
     let cachedReviews = [];
+    document.querySelector("#passwordForm").addEventListener("submit",async(event)=>{
+      event.preventDefault();
+      const button=document.querySelector("#changePassword");
+      const status=document.querySelector("#passwordMessage");
+      const password=document.querySelector("#accountPassword");
+      if(!currentUser){status.textContent="Reconnectez-vous pour modifier votre mot de passe.";return;}
+      button.disabled=true;status.textContent="Mise à jour en cours…";
+      const {error}=await supabase.auth.updateUser({password:password.value});
+      if(error){status.textContent="Erreur : "+error.message;}
+      else{password.value="";status.textContent="Mot de passe modifié avec succès.";}
+      button.disabled=false;
+    });
     const reviewForm = document.querySelector("#reviewForm");
     const reviewMessage = document.querySelector("#reviewMessage");
     const reviewsList = document.querySelector("#reviewsList");
