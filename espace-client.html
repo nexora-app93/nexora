@@ -29,7 +29,7 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
 <form id="companyForm" class="card"><h2>Mon entreprise</h2><p class="muted">Ces informations restent liées à ton compte.</p><label for="nom">Nom de l'entreprise</label><input id="nom" required maxlength="150" placeholder="Ex. Salon Nova"><label for="telephone">Téléphone</label><input id="telephone" type="tel" maxlength="40" placeholder="06…"><label for="adresse">Adresse</label><input id="adresse" maxlength="300" placeholder="Ville, rue…"><button id="save" type="submit">Enregistrer l'entreprise</button><p id="message" role="status"></p></form>
 <form id="reviewForm" class="card"><h2>Ajouter un avis</h2><p class="muted">Saisie manuelle d'un avis reçu. Aucun avis Google n'est importé automatiquement.</p><label for="client">Nom du client</label><input id="client" required maxlength="120" placeholder="Ex. Camille D."><label for="note">Note reçue</label><select id="note"><option value="5">★★★★★ · 5 étoiles</option><option value="4">★★★★☆ · 4 étoiles</option><option value="3">★★★☆☆ · 3 étoiles</option><option value="2">★★☆☆☆ · 2 étoiles</option><option value="1">★☆☆☆☆ · 1 étoile</option></select><label for="commentaire">Commentaire</label><textarea id="commentaire" required maxlength="2000" rows="4" placeholder="L'avis du client…"></textarea><label for="reponse">Réponse (facultatif)</label><textarea id="reponse" maxlength="2000" rows="3" placeholder="Tu peux aussi générer une proposition après l'ajout."></textarea><button type="submit" id="addReview">+ Enregistrer cet avis</button><p id="reviewMessage" role="status"></p></form>
 </div><section class="card" id="reviewsSection"><div class="toolbar"><div><h2>Avis clients</h2><p class="muted">Tes retours, tes réponses, ton suivi.</p></div><select id="reviewFilter" aria-label="Filtrer les avis"><option value="all">Tous les avis</option><option value="pending">Sans réponse</option><option value="answered">Avec réponse</option></select></div><div class="review-tools"><input id="reviewSearch" type="search" placeholder="Rechercher un avis…" aria-label="Rechercher dans les avis"><button id="exportReviews" type="button" class="ghost">Exporter CSV</button></div><p class="notice" id="resultsCount"></p><div id="reviewsList"></div></section></div>
-<section id="accountSettings" class="card" style="margin-top:22px"><h2>Mon compte</h2><p class="muted">Mettez à jour votre mot de passe en toute sécurité.</p><form id="passwordForm"><label for="accountPassword">Nouveau mot de passe</label><input id="accountPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required placeholder="10 caractères minimum"><button id="changePassword" type="submit">Modifier mon mot de passe</button><p id="passwordMessage" role="status"></p></form></section></div><footer>© 2026 NEXORA · AvisBoost · Les réponses proposées sont des brouillons à vérifier avant publication.</footer></div>
+<section id="subscriptionPanel" class="card" style="margin-top:22px"><h2>Mon abonnement</h2><p id="subscriptionStatus" role="status">Chargement de votre formule…</p><p class="muted">Formule gratuite disponible. Les formules Pro et Business sont en préparation : aucun paiement n'est demandé.</p><a href="offres.html">Découvrir les formules →</a></section><section id="accountSettings" class="card" style="margin-top:22px"><h2>Mon compte</h2><p class="muted">Mettez à jour votre mot de passe en toute sécurité.</p><form id="passwordForm"><label for="accountPassword">Nouveau mot de passe</label><input id="accountPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required placeholder="10 caractères minimum"><button id="changePassword" type="submit">Modifier mon mot de passe</button><p id="passwordMessage" role="status"></p></form></section></div><footer>© 2026 NEXORA · AvisBoost · Les réponses proposées sont des brouillons à vérifier avant publication.</footer></div>
 <script type="module">
     import { createClient } from
       "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
@@ -218,6 +218,15 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
         data?.adresse || "";
     }
 
+    async function loadSubscription(){
+      const status=document.querySelector("#subscriptionStatus");
+      if(!currentUser){status.textContent="Connectez-vous pour consulter votre abonnement.";return;}
+      const {data,error}=await supabase.from("abonnements").select("plan,statut").eq("user_id",currentUser.id).maybeSingle();
+      if(error){status.textContent="Impossible de charger votre abonnement.";return;}
+      status.textContent=data?.plan==="pro"||data?.plan==="business"
+        ? "Formule : "+data.plan.toUpperCase()+" · Statut : "+data.statut
+        : "Formule actuelle : Gratuit · Aucun paiement actif";
+    }
     async function initialize() {
       const { data, error } =
         await supabase.auth.getUser();
@@ -232,6 +241,7 @@ button,.btn{background:#204d43;border-radius:9px;font-weight:650;color:#fff}butt
       if (currentUser) {
         await loadCompany();
         await loadReviews();
+        await loadSubscription();
       }
     }
 
