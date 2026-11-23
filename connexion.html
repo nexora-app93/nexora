@@ -29,10 +29,11 @@
           class="secondary">
           Créer mon compte
         </button>
+        <button id="forgot" type="button" class="secondary">Mot de passe oublié ?</button>
       </form>
     </section>
 
-    <section id="account" hidden>
+    <section id="resetPanel" hidden><h2>Nouveau mot de passe</h2><form id="resetForm"><input id="newPassword" type="password" minlength="10" autocomplete="new-password" placeholder="10 caractères minimum" required><button type="submit">Modifier mon mot de passe</button></form></section><section id="account" hidden>
       <h2>Bienvenue !</h2>
       <p id="userEmail"></p>
       <p>Ton compte est connecté.</p><a href="espace-client.html">Ouvrir mon tableau de bord →</a>
@@ -59,6 +60,7 @@
     const password = document.querySelector("#password");
     const login = document.querySelector("#login");
     const signup = document.querySelector("#signup");
+    let recoveryMode=false;
 
     if (PROJECT_URL === "TON_PROJECT_URL" ||
         PUBLISHABLE_KEY === "TA_PUBLISHABLE_KEY") {
@@ -73,8 +75,9 @@
     );
 
     function showUser(user) {
-      auth.hidden = Boolean(user);
-      account.hidden = !user;
+      auth.hidden = recoveryMode || Boolean(user);
+      account.hidden = recoveryMode || !user;
+      document.querySelector("#resetPanel").hidden=!recoveryMode;
       userEmail.textContent = user?.email || "";
     }
 
@@ -131,13 +134,28 @@
         : "Déconnexion réussie.";
     }
 
+
+    document.querySelector("#forgot").addEventListener("click",async()=>{
+      if(!email.value.trim()||!email.checkValidity()){message.textContent="Saisis ton e-mail valide.";return;}
+      const button=document.querySelector("#forgot");button.disabled=true;
+      const {error}=await supabase.auth.resetPasswordForEmail(email.value.trim(),{redirectTo:window.location.origin+window.location.pathname});
+      message.textContent=error?error.message:"Si ce compte existe, un lien a été envoyé par e-mail.";
+      button.disabled=false;
+    });
+    document.querySelector("#resetForm").addEventListener("submit",async event=>{
+      event.preventDefault();
+      const {error}=await supabase.auth.updateUser({password:document.querySelector("#newPassword").value});
+      message.textContent=error?error.message:"Mot de passe mis à jour.";
+      if(!error){recoveryMode=false;const {data}=await supabase.auth.getUser();showUser(data?.user||null);}
+    });
     document.querySelector("#authForm")
       .addEventListener("submit", signIn);
     signup.addEventListener("click", signUp);
     document.querySelector("#logout")
       .addEventListener("click", signOut);
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if(event==="PASSWORD_RECOVERY") recoveryMode=true;
       showUser(session?.user || null);
     });
 
@@ -147,6 +165,7 @@
     if (error && error.name !== "AuthSessionMissingError") {
       message.textContent = error.message;
     }
+    if(window.location.hash.includes("type=recovery"))recoveryMode=true;
     showUser(data?.user || null);
   </script>
 </body>
